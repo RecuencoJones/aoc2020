@@ -17,14 +17,14 @@ const validateRequiredFields = (fields) => (v) => {
 }
 
 const validateYearField = (field, min, max) => (v) => {
-  const _v = parseInt(v[field])
-  return v[field].length === 4 && _v >= min && _v <= max
+  const value = parseInt(v[field])
+
+  return v[field].length === 4 && value >= min && value <= max
 }
 
 const validateMeasurementField = (field, min, max) => (v) => {
-  const _v = v[field]
-  const value = parseInt(_v)
-  const unit = _v.substring(_v.length - 2)
+  const [ _, rawValue, unit ] = /^(\d+)(\w+)$/.exec(v[field])
+  const value = parseInt(rawValue)
 
   return value >= min[unit] && value <= max[unit]
 }
@@ -35,14 +35,17 @@ const validateAllowedListField = (field, allowedList) => (v) => allowedList.incl
 
 const validateNumericStringField = (field, length) => (v) => new RegExp(`^[0-9]{${length}}$`).test(v[field])
 
-const validPassports = passports
-  .filter(validateRequiredFields([ 'byr', 'iyr', 'eyr', 'hgt', 'hcl', 'ecl', 'pid' ]))
-  .filter(validateYearField('byr', 1920, 2002))
-  .filter(validateYearField('iyr', 2010, 2020))
-  .filter(validateYearField('eyr', 2020, 2030))
-  .filter(validateMeasurementField('hgt', { cm: 150, in: 59 }, { cm: 193, in: 76 }))
-  .filter(validateHexColorField('hcl'))
-  .filter(validateAllowedListField('ecl', [ 'amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth' ]))
-  .filter(validateNumericStringField('pid', 9))
+const combineValidators= (...validators) => (v) => validators.reduce((accum, next) => accum && next(v), true)
+
+const validPassports = passports.filter(combineValidators(
+  validateRequiredFields([ 'byr', 'iyr', 'eyr', 'hgt', 'hcl', 'ecl', 'pid' ]),
+  validateYearField('byr', 1920, 2002),
+  validateYearField('iyr', 2010, 2020),
+  validateYearField('eyr', 2020, 2030),
+  validateMeasurementField('hgt', { cm: 150, in: 59 }, { cm: 193, in: 76 }),
+  validateHexColorField('hcl'),
+  validateAllowedListField('ecl', [ 'amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth' ]),
+  validateNumericStringField('pid', 9)
+))
 
 console.log(validPassports.length)
